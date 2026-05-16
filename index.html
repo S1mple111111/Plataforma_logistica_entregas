@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SI-LOGIS | Inteligencia Logística y Gemini API</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <!-- Header con Configuración de API -->
+    <header class="h-16 border-b border-slate-800 bg-slate-900 flex items-center justify-between px-6 z-[1000]">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center font-black">SL</div>
+            <h1 class="text-sm font-black uppercase tracking-tighter">SI-LOGIS <span class="text-indigo-400 text-[10px]">v2.6 AI</span></h1>
+        </div>
+        
+        <div class="flex items-center gap-4">
+            <div class="text-right">
+                <p class="text-[8px] text-slate-500 uppercase font-bold">Estado Red</p>
+                <p id="network-status" class="text-[10px] text-green-400 font-mono">ESTABLE</p>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex-1 flex overflow-hidden">
+        <!-- Panel Lateral -->
+        <aside class="w-80 border-r border-slate-800 flex flex-col z-[1000] bg-slate-900/50">
+            <div class="p-5 flex-1 overflow-y-auto custom-scroll space-y-6">
+                
+                <section>
+                    <h2 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Control de Flota</h2>
+                    <div class="space-y-4">
+                        <select id="origin-sel" class="w-full p-3 bg-slate-800 border border-slate-700 rounded-xl text-xs font-bold outline-none"></select>
+                        <div id="clients-container" class="space-y-1.5 max-h-48 overflow-y-auto custom-scroll"></div>
+                        <button onclick="app.optimize()" class="w-full bg-indigo-600 hover:bg-indigo-500 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">
+                            Calcular Ruta Óptima
+                        </button>
+                        <button onclick="app.autoAssign()" class="w-full bg-slate-700 hover:bg-slate-600 border border-slate-600 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">
+                            Asignación Automática
+                        </button>
+                    </div>
+                </section>
+
+                <section class="border-t border-slate-800 pt-5">
+                    <div class="flex justify-between items-center mb-3">
+                        <h2 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Eventos de Red</h2>
+                        <button onclick="app.resetNetwork()" class="text-[9px] text-indigo-400 hover:text-indigo-300 font-bold uppercase transition-colors">Restablecer</button>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="app.simulate('traffic')" class="p-3 bg-slate-800 border border-slate-700 rounded-xl text-center hover:border-orange-500 transition-colors">
+                            <span class="block text-lg">🚚</span>
+                            <span class="text-[9px] font-bold uppercase">Tráfico</span>
+                        </button>
+                        <button onclick="app.simulate('block')" class="p-3 bg-slate-800 border border-slate-700 rounded-xl text-center hover:border-red-500 transition-colors">
+                            <span class="block text-lg">🛑</span>
+                            <span class="text-[9px] font-bold uppercase">Bloqueo</span>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Balance Diario -->
+                <section class="border-t border-slate-800 pt-5">
+                    <div class="flex justify-between items-center mb-3">
+                        <h2 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Balance Diario</h2>
+                        <span id="daily-routes" class="text-[9px] bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded-full font-bold">0 Rutas</span>
+                    </div>
+                    <div class="p-4 bg-slate-800/50 border border-slate-700 rounded-xl flex items-center justify-between">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase">Costo Total</span>
+                        <span id="daily-cost" class="text-lg font-black text-green-400">$0</span>
+                    </div>
+                </section>
+
+                <!-- Gemini Integration -->
+                <section class="bg-indigo-950/30 border border-indigo-500/30 rounded-2xl p-5">
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Gemini Neural Insight</span>
+                        <div class="w-2 h-2 bg-indigo-500 rounded-full animate-ping"></div>
+                    </div>
+                    <div id="ai-log" class="text-[11px] text-indigo-100/70 leading-relaxed min-h-[60px]">
+                        Listo para el análisis predictivo de Gemini.
+                    </div>
+                    <button onclick="app.askGemini()" class="mt-4 w-full py-2 bg-indigo-500/10 border border-indigo-500/50 hover:bg-indigo-500/20 rounded-lg text-[9px] font-bold uppercase transition-colors">
+                        Consultar Estrategia AI
+                    </button>
+                </section>
+            </div>
+            
+            <!-- Historial de Eventos -->
+            <div class="p-4 border-t border-slate-800 bg-slate-950">
+                <p class="text-[9px] text-slate-500 font-bold uppercase mb-2">Monitor de Eventos</p>
+                <div id="event-monitor" class="text-[9px] font-mono text-slate-400 space-y-1 h-20 overflow-y-auto custom-scroll">
+                    > Sistema inicializado...
+                </div>
+            </div>
+        </aside>
+
+        <!-- Mapa -->
+        <main class="flex-1 relative">
+            <div id="map"></div>
+            
+            <!-- Flotante de Resultados -->
+            <div id="res-panel" class="absolute bottom-8 right-8 w-64 glass p-5 rounded-3xl hidden z-[1000]">
+                <div class="flex justify-between items-start mb-2">
+                    <p class="text-[9px] font-black text-indigo-400 uppercase">Resumen de Trayecto</p>
+                    <button onclick="app.clearRoute()" class="text-slate-400 hover:text-white transition-colors" title="Limpiar ruta">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="flex justify-between items-end">
+                    <span id="res-km" class="text-2xl font-black italic">0.00 km</span>
+                    <span id="res-cost" class="text-[10px] font-mono text-green-400 mb-1">$0.00</span>
+                </div>
+                <button onclick="app.confirmRoute()" class="mt-4 w-full bg-indigo-500 hover:bg-indigo-400 text-white py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all">
+                    Confirmar y Sumar
+                </button>
+            </div>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
